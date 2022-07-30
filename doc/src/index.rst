@@ -1,8 +1,3 @@
-.. remote-email-filtering documentation master file, created by
-   sphinx-quickstart on Sat Jul 30 10:34:55 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to remote-email-filtering's documentation!
 ==================================================
 
@@ -10,7 +5,14 @@ Welcome to remote-email-filtering's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+.. automodule:: remote_email_filtering.action
+   :members:
 
+.. automodule:: remote_email_filtering.remote
+   :members:
+
+.. automodule:: remote_email_filtering.auth
+   :members:
 
 Indices and tables
 ==================
