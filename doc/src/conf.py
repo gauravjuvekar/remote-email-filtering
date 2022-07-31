@@ -10,12 +10,15 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../../src/'))
 
+import remote_email_filtering
+
 project = 'remote-email-filtering'
 copyright = '2022, Gaurav Juvekar'
 author = 'Gaurav Juvekar'
 
-version = '0.1'
-release = '0.1'
+today_fmt = '%Y-%m-%d'
+
+version = release = remote_email_filtering.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -29,7 +32,6 @@ extensions = [
 
 templates_path = ['_templates']
 exclude_patterns = []
-
 
 
 # -- Options for HTML output -------------------------------------------------
