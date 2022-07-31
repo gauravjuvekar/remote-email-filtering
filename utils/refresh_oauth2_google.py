@@ -31,7 +31,7 @@ def main():
         type=str,
         help="write refreshed access token to a different file")
 
-    def duration_type(str):
+    def time_type(str):
         ret = dateparser.parse(str).astimezone()
         if ret is None:
             raise argparse.ArgumentTypeError(
@@ -40,8 +40,9 @@ def main():
 
     parser.add_argument(
         "--validity",
-        type=duration_type,
-        default="30min",
+        type=time_type,
+        default=(datetime.datetime.now(datetime.timezone.utc) +
+                 datetime.timedelta(minutes=30)),
         help="refresh only if existing access token expires before this duration")
     args = parser.parse_args()
 
