@@ -11,9 +11,6 @@ Welcome to remote-email-filtering's documentation!
 .. automodule:: remote_email_filtering.remote
    :members:
 
-.. automodule:: remote_email_filtering.auth
-   :members:
-
 Indices and tables
 ==================
 
