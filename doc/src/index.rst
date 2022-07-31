@@ -5,11 +5,18 @@ Welcome to remote-email-filtering's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+
+
+Remote
+------
+.. automodule:: remote_email_filtering.remote
+   :members:
+
+Action
+------
 .. automodule:: remote_email_filtering.action
    :members:
 
-.. automodule:: remote_email_filtering.remote
-   :members:
 
 Indices and tables
 ==================

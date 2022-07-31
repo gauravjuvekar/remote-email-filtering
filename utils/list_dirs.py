@@ -26,8 +26,11 @@ def main():
     remote = remote_email_filtering.remote.Imap(host=args.HOST,
                                                 user=args.USER,
                                                 token=creds['token'])
+    filters = {
+        ('INBOX',): [lambda x: x, ],
+    }
 
-    remote_email_filtering.main.start_filtering(remote)
+    remote_email_filtering.main.start_filtering(remote, filters)
 
 
 if __name__ == '__main__':
