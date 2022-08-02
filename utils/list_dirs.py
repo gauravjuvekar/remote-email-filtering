@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 import json
 import os
+from pprint import pp
 import sys
 
 sys.path.insert(0, os.path.abspath('../src'))
 
+import remote_email_filtering
+import remote_email_filtering.remote
+import remote_email_filtering.main
+import remote_email_filtering.action
+from remote_email_filtering.action import Action, Stop
+
+
+def print_envelope(msg):
+    pp(msg.envelope)
+    return []
+
 
 def main():
     import argparse
-    import remote_email_filtering
-    import remote_email_filtering.remote
-    import remote_email_filtering.main
 
     parser = argparse.ArgumentParser(
         description="List top level directories over IMAP")
@@ -27,10 +36,10 @@ def main():
                                                 user=args.USER,
                                                 token=creds['token'])
     filters = {
-        ('INBOX',): [lambda x: x, ],
+        ('INBOX',): [print_envelope, Stop()],
     }
 
-    remote_email_filtering.main.start_filtering(remote, filters)
+    remote_email_filtering.main.start(remote, filters, count=1)
 
 
 if __name__ == '__main__':

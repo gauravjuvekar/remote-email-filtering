@@ -1,3 +1,4 @@
 __version__ = '0.1.0'
 
-from .main import *
+from .types import *
+from .main import start
