@@ -1,3 +1,5 @@
+# Copyright 2022, Gaurav Juvekar
+# SPDX-License-Identifier: MIT
 import email
 import email.header
 import email.policy
