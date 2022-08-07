@@ -1,5 +1,5 @@
-import re
 import collections
+import re
 import typing
 
 

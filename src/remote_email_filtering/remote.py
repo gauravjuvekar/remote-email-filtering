@@ -1,9 +1,14 @@
 import abc
-import imapclient
+import logging
 import typing
 
-from . import types
-from . import message
+import imapclient
+
+from . import message, types
+
+log = logging.getLogger(__name__)
+
+imapclient.imaplib.Debug = 0
 
 
 class Remote(abc.ABC):

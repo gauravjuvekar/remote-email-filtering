@@ -2,8 +2,10 @@
 Basic building blocks for doing stuff with a
 :class:`~remote_email_filtering.message.Message`
 """
-
 import abc
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class Action(abc.ABC):
@@ -49,5 +51,6 @@ class Move(Action):
         self.destination = destination
 
     def __call__(self, msg):
+        log.info(f'Moving {msg.dir_}/{msg.Subject} to {target_dir}')
         self.remote.move_message(msg, self.destination)
         return []
