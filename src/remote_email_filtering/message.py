@@ -5,6 +5,7 @@ import typing
 
 from . import types
 
+
 class Message(object):
     """
     An email message with convenient properties
@@ -62,12 +63,11 @@ class Message(object):
         return self.envelope['subject']
 
     @property
-    def _SaneSubject(self):
-        ret = self.body['Subject']
-        ret = email.header.decode_header(ret)[0]
-        if ret[1] is not None:
-            ret = ret[0].decode('ascii', errors='replace')
+    def SaneSubject(self):
+        ascii_header = self.Subject.decode('ascii')
+        encoded, charset = email.header.decode_header(ascii_header)[0]
+        if charset is not None:
+            ret = encoded.decode(charset, errors='replace')
         else:
-            ret = ret[0]
-        ret = ret.replace('\n', '')
+            ret = encoded
         return ret
