@@ -10,6 +10,9 @@ python = "^3.10"
 IMAPClient = "^2.3.1"
 
 [tool.poetry.dev-dependencies]
+google-auth-oauthlib = "^0.5.2"
+google-api-python-client = "^2.55.0"
+dateparser = "^1.1.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
