@@ -1,19 +1,21 @@
+[tool.poetry]
+name = "remote-email-filtering"
+version = "0.1.0"
+description = "Email client library for automation"
+authors = ["Gaurav Juvekar <gauravjuvekar@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.dev-dependencies]
+
 [build-system]
-requires = ['setuptools']
-build-backend = 'setuptools.build_meta'
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
-name = 'remote-email-filtering'
-version = '0.1.0'
-authors = [
-    { name="Gaurav Juvekar", email="gauravjuvekar@gmail.com" },
-]
-
-description = "Filter email remotely over IMAP/EWS"
-readme = 'README.rst'
-license = { file='COPYING' }
-requires-python = '>=3.10'
-
+readme = ['README.rst']
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: No Input/Output (Daemon)",
