@@ -53,6 +53,7 @@ class Move(Action):
         self.destination = destination
 
     def __call__(self, msg):
+        target_dir = self.destination
         log.info(f'Moving {msg.dir_}/{msg.Subject} to {target_dir}')
-        self.remote.move_message(msg, self.destination)
+        self.remote.move_message(msg, target_dir)
         return []
