@@ -73,3 +73,11 @@ class Message(object):
         else:
             ret = encoded
         return ret
+
+    @property
+    def BodyText(self):
+        body = self.body.get_body(preferencelist=('plain',))
+        if not body:
+            return None
+        text = body.get_content()
+        return text
