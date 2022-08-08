@@ -1,3 +1,5 @@
+# Copyright 2022, Gaurav Juvekar
+# SPDX-License-Identifier: MIT
 """
 Basic building blocks for doing stuff with a
 :class:`~remote_email_filtering.message.Message`

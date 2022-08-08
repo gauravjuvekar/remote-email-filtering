@@ -2,3 +2,5 @@ client_secret.json
 authorized_secret.json
 build
 __pycache__
+dist
+*.egg-info

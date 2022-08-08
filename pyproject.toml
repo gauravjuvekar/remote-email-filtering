@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "remote-email-filtering"
+version = "0.1.0"
+description = "Email client library for automation"
+authors = ["Gaurav Juvekar <gauravjuvekar@gmail.com>"]
+license = "MIT"
+readme = 'README.rst'
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: No Input/Output (Daemon)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Topic :: Communications :: Email :: Email Clients (MUA)",
+    "Topic :: Communications :: Email :: Filters",
+]
+homepage = "https://github.com/gauravjuvekar/remote-email-filtering"
+repository = "https://github.com/gauravjuvekar/remote-email-filtering"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/gauravjuvekar/remote-email-filtering/issues"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+IMAPClient = "^2.3.1"
+
+[tool.poetry.dev-dependencies]
+google-auth-oauthlib = "^0.5.2"
+google-api-python-client = "^2.55.0"
+dateparser = "^1.1.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
