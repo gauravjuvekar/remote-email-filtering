@@ -65,6 +65,10 @@ class Message(object):
         return self.envelope['subject']
 
     @property
+    def Time(self):
+        return self.envelope['date']
+
+    @property
     def SaneSubject(self):
         ascii_header = self.Subject.decode('ascii')
         encoded, charset = email.header.decode_header(ascii_header)[0]
@@ -81,3 +85,4 @@ class Message(object):
             return None
         text = body.get_content()
         return text
+
