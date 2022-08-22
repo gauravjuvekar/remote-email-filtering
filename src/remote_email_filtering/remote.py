@@ -1,6 +1,7 @@
 # Copyright 2022, Gaurav Juvekar
 # SPDX-License-Identifier: MIT
 import abc
+import itertools
 import logging
 import typing
 
@@ -37,23 +38,37 @@ class Remote(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def fetch_multiple_envelopes(self, msg_ids: typing.Iterable[types.Uid]
+            ) -> typing.Iterable[typing.Tuple[types.Uid, bytes]]:
+        """
+        Fetch multiple envelopes, attempting to batch them in least possible
+        requests.
+        """
+        pass
+
+    @abc.abstractmethod
     def fetch_body(self, msg_id: types.Uid):
         """
         Fetch the full email body.
         """
         pass
 
-    def get_messages(self, dir_: types.Directory) -> typing.Iterable[message.Message]:
+    def get_messages(self, dir_: types.Directory
+                     ) -> typing.Iterable[message.Message]:
         """
         Get all messages in ``dir_``
         """
-        for msg_id in self.list_messages(dir_):
-            envelope = self.fetch_envelope(msg_id)
-            yield message.Message(uid=msg_id, envelope=envelope,
-                                  dir_=dir_, remote=self)
+        list_msg = list(self.list_messages(dir_))
+        for msg_id, envelope in zip(
+            list_msg, self.fetch_multiple_envelopes(list_msg)
+        ):
+            yield message.Message(
+                uid=msg_id, envelope=envelope, dir_=dir_, remote=self
+            )
 
     @abc.abstractmethod
-    def move_message_id(self, msg_id: types.Uid, target_dir: types.Directory) -> types.Uid:
+    def move_message_id(self, msg_id: types.Uid, target_dir: types.Directory
+                        ) -> types.Uid:
         """
         Move ``msg_id`` to ``target_dir``.
         """
@@ -92,6 +107,13 @@ class Imap(Remote):
         ret = self.connection.fetch(uid, ['UID', 'ENVELOPE'])
         msg = ret[uid]
         return msg[b'ENVELOPE']
+
+    def fetch_multiple_envelopes(self, msg_ids):
+        for dir_, uids in itertools.groupby(msg_ids, key=lambda uid: uid[0]):
+            self.connection.select_folder('/'.join(dir_))
+            local_uids = [uid[1] for uid in uids]
+            ret = self.connection.fetch(local_uids, ['UID', 'ENVELOPE'])
+            yield from (ret[uid][b'ENVELOPE'] for uid in local_uids)
 
     def fetch_body(self, msg_id):
         dir_, uid = msg_id
