@@ -28,6 +28,7 @@ class Message(object):
             self.envelope[field] = tuple((types.Address.from_imapclient(x)
                                           for x in self.envelope[field]))
 
+        self._flags = None
         self.remote = remote
         self.dir_ = dir_
         self.raw = rfc822_bytes
@@ -43,6 +44,12 @@ class Message(object):
             self._body = email.message_from_bytes(self.raw,
                                                   policy=email.policy.default)
         return self._body
+
+    @property
+    def flags(self):
+        if self._flags is None:
+            self._flags = self.remote.fetch_flags(self.uid)
+        return self._flags
 
     @property
     def To(self):

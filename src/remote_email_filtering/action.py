@@ -57,3 +57,33 @@ class Move(Action):
         log.info(f'Moving {msg.dir_}/{msg.Subject} to {target_dir}')
         self.remote.move_message(msg, target_dir)
         return []
+
+
+class ChangeFlags(Action):
+    def __init__(self, add=set(), remove=set()):
+        """
+        Add or remove flags from a :class:`~.message.Message`.
+
+        :param set[bytes] add: Set of flags to add
+        :param set[bytes] remove: Set of flags to remove
+
+        The intersection of `add` and `remove` must be empty
+        """
+        super().__init__()
+
+        if add & remove:
+            raise ValueError("Add and remove sets must not intersect")
+
+        self.add = add
+        self.remove = remove
+
+    def __call__(self, msg):
+        new_flags = msg.flags
+        log.info(f'Set {msg.dir_}/{msg.Subject} +({self.add})-({self.remove})')
+        if self.add:
+            new_flags = msg.remote.add_flags(msg.uid, self.add)
+        if self.remove:
+            new_flags = msg.remote.remove_flags(msg.uid, self.remove)
+        msg._flags = new_flags
+        log.info(f'{msg.dir_}/{msg.Subject} =({msg.flags})')
+        return []

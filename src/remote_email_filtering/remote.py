@@ -82,6 +82,31 @@ class Remote(abc.ABC):
         msg.dir_ = target_dir
         msg.uid = new_uid
 
+    @abc.abstractmethod
+    def fetch_flags(self, msg_id: types.Uid) -> typing.Set[typing.ByteString]:
+        """
+        Get flags associated with a ``msg_id``
+        """
+        pass
+
+    @abc.abstractmethod
+    def add_flags(self, msg_id: types.Uid,
+                  flags: typing.Set[typing.ByteString]
+                  ) -> typing.Set[typing.ByteString]:
+        """
+        Add and associated flags with a ``msg_id``
+        """
+        pass
+
+    @abc.abstractmethod
+    def remove_flags(self, msg_id: types.Uid,
+                     flags: typing.Set[typing.ByteString]
+                     ) -> typing.Set[typing.ByteString]:
+        """
+        Remove flags associated with a ``msg_id``
+        """
+        pass
+
 
 class Imap(Remote):
     def __init__(self, host, user, token, **kwargs):
@@ -127,3 +152,19 @@ class Imap(Remote):
         self.connection.select_folder('/'.join(dir_))
         self.connection.move([uid], '/'.join(target_dir))
         return (target_dir, uid)
+
+    def fetch_flags(self, msg_id):
+        dir_, uid = msg_id
+        self.connection.select_folder('/'.join(dir_))
+        flags = self.connection.get_flags([uid])
+        return set(flags[uid])
+
+    def add_flags(self, msg_id, flags):
+        dir_, uid = msg_id
+        self.connection.select_folder('/'.join(dir_))
+        return set(self.connection.add_flags([uid], flags)[uid])
+
+    def remove_flags(self, msg_id, flags):
+        dir_, uid = msg_id
+        self.connection.select_folder('/'.join(dir_))
+        return set(self.connection.remove_flags([uid], flags)[uid])
