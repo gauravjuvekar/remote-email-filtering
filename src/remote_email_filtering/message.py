@@ -93,3 +93,9 @@ class Message(object):
         text = body.get_content()
         return text
 
+    @property
+    def Attachments(self):
+        for attachment in self.body.iter_attachments():
+            yield {'name': attachment.get_filename(),
+                   'content_type': attachment.get_content_type(),
+                   'bytes': attachment.get_content()}
