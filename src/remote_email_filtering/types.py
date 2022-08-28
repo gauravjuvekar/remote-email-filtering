@@ -16,11 +16,13 @@ class Address(collections.namedtuple('Address', 'name mailbox host',
         if sname is None:
             sname = b''
 
-        if any(x is None for x in (addr.name, addr.mailbox, addr.host)):
-            return False
-        return all((re.fullmatch(addr.name, sname),
-                    re.fullmatch(addr.mailbox, smbox),
-                    re.fullmatch(addr.host, shost)))
+        oname, omailbox, ohost = tuple(
+            x if x is not None else rb'.*'
+            for x in (addr.name, addr.mailbox, addr.host))
+
+        return all((re.fullmatch(oname, sname),
+                    re.fullmatch(omailbox, smbox),
+                    re.fullmatch(ohost, shost)))
 
 
 """
