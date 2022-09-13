@@ -16,6 +16,16 @@ imapclient.imaplib.Debug = 0
 
 class Remote(abc.ABC):
     @abc.abstractmethod
+    def dir_validity(self, dir_: types.Directory):
+        """
+        Get an object that represents if a given dir_ on the remote is valid
+
+        If this value does not match with a previously returned value, a new
+        message was received in the directory.
+        """
+        pass
+
+    @abc.abstractmethod
     def list_dirs(self) -> typing.Iterable[types.Directory]:
         """
         List all ``Directory`` in the mailbox.
@@ -113,6 +123,10 @@ class Imap(Remote):
         super().__init__(**kwargs)
         self.connection = imapclient.IMAPClient(host)
         self.connection.oauth2_login(user, access_token=token)
+
+    def dir_validity(self, dir_):
+        ret = self.connection.select_folder('/'.join(dir_))
+        return (ret[b'UIDVALIDITY'], ret[b'UIDNEXT'])
 
     def list_dirs(self):
         for flags, delim, name in self.connection.list_folders():
