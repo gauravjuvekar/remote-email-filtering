@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "remote-email-filtering"
-version = "0.1.1"
+version = "0.1.2"
 description = "Email client library for automation"
 authors = ["Gaurav Juvekar <gauravjuvekar@gmail.com>"]
 license = "MIT"
