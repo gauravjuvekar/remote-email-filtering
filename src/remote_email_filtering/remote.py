@@ -257,7 +257,8 @@ class Ews(Remote):
             yield self.fetch_envelope(msg_id)
 
     def fetch_body(self, msg_id):
-        raise NotImplementedError()
+        msg = self._resolve_msg_obj(msg_id)
+        return msg.mime_content
 
     def move_message_id(self, msg_id, target_dir):
         msg = self._resolve_msg_obj(msg_id)
