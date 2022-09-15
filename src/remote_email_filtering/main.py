@@ -46,23 +46,24 @@ def start(remote,
     :param stop_event: Event object that safely exits from a loop before
     `count` expires
     """
-    validity = dict((k, False) for k in dir_actions.keys())
+    watermarks = dict((k, None) for k in dir_actions.keys())
 
     while count > 0 and not stop_event.is_set():
         for dir_ in remote.list_dirs():
             if stop_event.is_set():
                 break
 
-            if dir_ not in validity:
+            if dir_ not in watermarks:
                 continue
 
-            new_validity = remote.dir_validity(dir_)
-            if validity[dir_] == new_validity:
+            updated, new_watermark = remote.is_dir_updated(dir_,
+                                                           watermarks[dir_])
+            watermarks[dir_] = new_watermark
+            if not updated:
                 log.debug(f"No new messages in {dir_}")
                 continue
             else:
                 log.debug(f"{dir_} has new messages")
-                validity[dir_] = new_validity
 
             for message in remote.get_messages(dir_):
                 if stop_event.is_set():

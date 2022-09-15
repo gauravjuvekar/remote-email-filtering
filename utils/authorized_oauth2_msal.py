@@ -48,4 +48,4 @@ if __name__ == '__main__':
 
     result = main(params, args.SECRET_JSON, args.USERNAME)
     if result is None or 'access_token' not in result:
-        raise Exception(msg="Failed to refresh")
+        raise Exception("Failed to refresh")

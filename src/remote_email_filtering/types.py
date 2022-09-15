@@ -11,6 +11,11 @@ class Address(collections.namedtuple('Address', 'name mailbox host',
     def from_imapclient(cls, addr):
         return cls(name=addr.name, mailbox=addr.mailbox, host=addr.host)
 
+    @classmethod
+    def from_exchangelib(cls, addr):
+        mailbox, _, host = addr.email_address.rpartition('@')
+        return cls(name=addr.name, mailbox=mailbox, host=host)
+
     def re_match(self, addr):
         sname, smbox, shost = self
         if sname is None:

@@ -5,7 +5,11 @@ import itertools
 import logging
 import typing
 
+import exchangelib
 import imapclient
+import imapclient.response_types
+import oauthlib
+import oauthlib.oauth2
 
 from . import message, types
 
@@ -16,12 +20,10 @@ imapclient.imaplib.Debug = 0
 
 class Remote(abc.ABC):
     @abc.abstractmethod
-    def dir_validity(self, dir_: types.Directory):
+    def is_dir_updated(self, dir_: types.Directory, watermark):
         """
-        Get an object that represents if a given dir_ on the remote is valid
-
-        If this value does not match with a previously returned value, a new
-        message was received in the directory.
+        Returns (True/False, new watermark) if there are changes in dir_
+        compared to the watermark.
         """
         pass
 
@@ -124,9 +126,10 @@ class Imap(Remote):
         self.connection = imapclient.IMAPClient(host)
         self.connection.oauth2_login(user, access_token=token)
 
-    def dir_validity(self, dir_):
+    def is_dir_updated(self, dir_, watermark=None):
         ret = self.connection.select_folder('/'.join(dir_))
-        return (ret[b'UIDVALIDITY'], ret[b'UIDNEXT'])
+        new_watermark = (ret[b'UIDVALIDITY'], ret[b'UIDNEXT'])
+        return watermark != new_watermark, new_watermark
 
     def list_dirs(self):
         for flags, delim, name in self.connection.list_folders():
@@ -182,3 +185,80 @@ class Imap(Remote):
         dir_, uid = msg_id
         self.connection.select_folder('/'.join(dir_))
         return set(self.connection.remove_flags([uid], flags)[uid])
+
+
+class Ews(Remote):
+    def __init__(self, host, user, token, **kwargs):
+        super().__init__(**kwargs)
+
+        self.connection = exchangelib.Account(
+            primary_smtp_address=user,
+            config=exchangelib.Configuration(
+                server=host,
+                credentials=exchangelib.OAuth2AuthorizationCodeCredentials(access_token=token)),
+            autodiscover=False,
+            access_type=exchangelib.DELEGATE)
+
+        self.toplevel = self.connection.msg_folder_root
+
+    def _resolve_dir(self, parts):
+        start = self.connection.msg_folder_root
+        for part in parts:
+            start = start / part
+        return start
+
+    def is_dir_updated(self, dir_, watermark=None):
+        dir_ = self._resolve_dir(dir_)
+        l = list(dir_.sync_items())
+        return bool(l), None
+
+    def list_dirs(self):
+        toplevel_strip = len(self.toplevel.parts)
+        for dir_ in self.toplevel.walk():
+            yield tuple((x.name for x in dir_.parts[toplevel_strip:]))
+
+    def list_messages(self, dir_):
+        dir_obj = self._resolve_dir(dir_)
+        for msgid in dir_obj.all().values('id', 'changekey'):
+            yield (dir_, msgid)
+
+    def fetch_envelope(self, msg_id):
+        dir_, msg_id = msg_id
+        dir_obj = self._resolve_dir(dir_)
+        msg = dir_obj.get(**msg_id)
+        envelope = imapclient.response_types.Envelope(
+            date=msg.datetime_received,
+            subject=msg.subject.encode('utf-8'),
+            from_=tuple([types.Address.from_exchangelib(msg.author)]),
+            sender=(tuple([types.Address.from_exchangelib(msg.sender)])
+                    if msg.sender else None),
+            reply_to=tuple([types.Address.from_exchangelib(x) for x in
+                            (msg.reply_to if msg.reply_to else [])]),
+            to=tuple([types.Address.from_exchangelib(x) for x in
+                      (msg.to_recipients if msg.to_recipients else [])]),
+            cc=tuple([types.Address.from_exchangelib(x) for x in
+                      (msg.cc_recipients if msg.cc_recipients else [])]),
+            bcc=tuple([types.Address.from_exchangelib(x) for x in
+                       (msg.bcc_recipients if msg.bcc_recipients else [])]),
+            in_reply_to=msg.in_reply_to,
+            message_id=msg.message_id)
+        return envelope
+
+    def fetch_multiple_envelopes(self, msg_ids):
+        for msg_id in msg_ids:
+            yield self.fetch_envelope(msg_id)
+
+    def fetch_body(self, msg_id):
+        raise NotImplementedError()
+
+    def move_message_id(self, msg_id, target_dir):
+        raise NotImplementedError()
+
+    def fetch_flags(self, msg_id):
+        raise NotImplementedError()
+
+    def add_flags(self, msg_id, flags):
+        raise NotImplementedError()
+
+    def remove_flags(self, msg_id, flags):
+        raise NotImplementedError()
