@@ -207,15 +207,25 @@ class Ews(Remote):
             start = start / part
         return start
 
+    def _unresolve_dir(self, dir_obj):
+        toplevel_strip = len(self.toplevel.parts)
+        return tuple((x.name for x in dir_obj.parts[toplevel_strip:]))
+
+    def _resolve_msg_obj(self, msg_id):
+        dir_, msg_id = msg_id
+        dir_obj = self._resolve_dir(dir_)
+        msg = dir_obj.get(**msg_id)
+        return msg
+
     def is_dir_updated(self, dir_, watermark=None):
         dir_ = self._resolve_dir(dir_)
-        l = list(dir_.sync_items())
-        return bool(l), None
+        sync = list(dir_.sync_items(only_fields=['id']))
+        return bool(sync), None
 
     def list_dirs(self):
         toplevel_strip = len(self.toplevel.parts)
         for dir_ in self.toplevel.walk():
-            yield tuple((x.name for x in dir_.parts[toplevel_strip:]))
+            yield self._unresolve_dir(dir_)
 
     def list_messages(self, dir_):
         dir_obj = self._resolve_dir(dir_)
@@ -223,9 +233,7 @@ class Ews(Remote):
             yield (dir_, msgid)
 
     def fetch_envelope(self, msg_id):
-        dir_, msg_id = msg_id
-        dir_obj = self._resolve_dir(dir_)
-        msg = dir_obj.get(**msg_id)
+        msg = self._resolve_msg_obj(msg_id)
         envelope = imapclient.response_types.Envelope(
             date=msg.datetime_received,
             subject=msg.subject.encode('utf-8'),
@@ -252,13 +260,41 @@ class Ews(Remote):
         raise NotImplementedError()
 
     def move_message_id(self, msg_id, target_dir):
-        raise NotImplementedError()
+        msg = self._resolve_msg_obj(msg_id)
+        target = self._resolve_dir(target_dir)
+        msg.move(target)
+        return (self._unresolve_dir(msg.folder),
+                {'id': msg.id, 'changekey': msg.changekey})
+
+    FAKE_CATEGORIES = set([
+        r'\Seen',
+    ])
 
     def fetch_flags(self, msg_id):
-        raise NotImplementedError()
+        msg = self._resolve_msg_obj(msg_id)
+        flags = msg.categories
+        if flags is None:
+            flags = set()
+        else:
+            flags = set(flags)
+        if msg.is_read:
+            flags |= set([r'\Seen'])
+        return flags
+
+    def change_flags(self, msg_id, flags, op):
+        msg = self._resolve_msg_obj(msg_id)
+        existing = self.fetch_flags(msg_id)
+        new = op(existing, set(flags))
+        if new == existing:
+            return new
+
+        msg.is_read = r'\Seen' in new
+        msg.categories = list(new - self.FAKE_CATEGORIES)
+        msg.save()
+        return new
 
     def add_flags(self, msg_id, flags):
-        raise NotImplementedError()
+        return self.change_flags(msg_id, flags, op=lambda x, y: x | y)
 
     def remove_flags(self, msg_id, flags):
-        raise NotImplementedError()
+        return self.change_flags(msg_id, flags, op=lambda x, y: x - y)
