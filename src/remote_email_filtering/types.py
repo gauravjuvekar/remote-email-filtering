@@ -32,6 +32,11 @@ class Address(collections.namedtuple('Address', 'name mailbox host',
                     re.fullmatch(ohost, shost)))
 
 
+class AddressRe(Address):
+    def in_(self, iterable):
+        return any(addr.re_match(self) for addr in iterable)
+
+
 """
 A directory on the mail server made up of the path components of the directory
 """
