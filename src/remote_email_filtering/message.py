@@ -77,7 +77,7 @@ class Message(object):
 
     @property
     def SaneSubject(self):
-        ascii_header = self.Subject.decode('ascii')
+        ascii_header = self.Subject.decode('ascii', errors='ignore')
         encoded, charset = email.header.decode_header(ascii_header)[0]
         if charset is not None:
             ret = encoded.decode(charset, errors='replace')
