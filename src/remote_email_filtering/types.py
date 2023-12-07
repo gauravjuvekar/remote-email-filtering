@@ -14,7 +14,7 @@ class Address(collections.namedtuple('Address', 'name mailbox host',
     @classmethod
     def from_exchangelib(cls, addr):
         mailbox, _, host = addr.email_address.rpartition('@')
-        return cls(name=addr.name.encode('ascii'),
+        return cls(name=addr.name.encode('utf8'),
                    mailbox=mailbox.encode('ascii'),
                    host=host.encode('ascii'))
 
