@@ -160,9 +160,9 @@ class Imap(Remote):
     def fetch_body(self, msg_id):
         dir_, uid = msg_id
         self.connection.select_folder('/'.join(dir_))
-        ret = self.connection.fetch(uid, ['UID', 'RFC822'])
+        ret = self.connection.fetch(uid, ['UID', 'BODY.PEEK[]'])
         msg = ret[uid]
-        return msg[b'RFC822']
+        return msg[b'BODY[]']
 
     def move_message_id(self, msg_id, target_dir):
         dir_, uid = msg_id
