@@ -78,12 +78,18 @@ class Message(object):
     @property
     def SaneSubject(self):
         ascii_header = self.Subject.decode('ascii', errors='ignore')
-        encoded, charset = email.header.decode_header(ascii_header)[0]
-        if charset is not None:
-            ret = encoded.decode(charset, errors='replace')
-        else:
-            ret = encoded
-        return ret
+
+        def fragment_to_str(maybe_encoded, charset):
+            if isinstance(maybe_encoded, str):
+                return maybe_encoded
+            else:
+                if charset is None:
+                    charset = 'ascii'
+                return maybe_encoded.decode(charset, errors='replace')
+
+        return ''.join((fragment_to_str(e, c)
+                        for (e, c) in
+                            email.header.decode_header(ascii_header)))
 
     @property
     def BodyText(self):
