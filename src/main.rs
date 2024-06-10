@@ -1,7 +1,4 @@
-mod actions;
-mod filters;
-mod folder;
-mod types;
+use remote_email_filtering as ref_;
 
 use clap;
 
@@ -34,17 +31,18 @@ fn main() {
     let args = <Cli as clap::Parser>::parse();
 
     if args.command == Commands::Filter {
-        let my_filter = actions::Action::Logic(Box::new(filters::Print {
-            some_state: 13,
-            message: "const action".to_string(),
-        }));
+        let my_filter =
+            ref_::actions::Action::Logic(Box::new(ref_::filters::Print {
+                some_state: 13,
+                message: "const action".to_string(),
+            }));
 
         let spec = vec![(
-            types::Folder {
+            ref_::types::Folder {
                 path: vec!["INBOX".to_string()],
             },
             vec![my_filter],
         )];
-        filters::mainloop(&spec)
+        ref_::filters::mainloop(&spec)
     }
 }
