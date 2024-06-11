@@ -10,4 +10,7 @@ pub struct Folder {
     pub path: Vec<String>,
 }
 
+
+pub struct Context {}
+
 pub type FilterSpec<'a> = Vec<(Folder, Vec<actions::Action>)>;
