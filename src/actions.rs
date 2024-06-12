@@ -6,6 +6,7 @@ use crate::types;
 use core::result::Result;
 use thiserror::Error;
 
+#[derive(Clone)]
 pub struct ChangeFlags {
     set: types::Flags,
     clear: types::Flags,

@@ -6,6 +6,7 @@ pub struct Message {
     pub id: u32,
 }
 
+#[derive(Clone)]
 pub struct Folder {
     pub path: Vec<String>,
 }

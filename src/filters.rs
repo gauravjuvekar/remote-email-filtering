@@ -1,5 +1,7 @@
 use maybe_owned::MaybeOwned;
 use rand;
+use std::collections::HashSet;
+
 
 use crate::actions;
 use crate::types;
@@ -49,8 +51,22 @@ fn process_message(
         Box::new(ret)
     };
 
-    let mut flags;
-    let mut dest_dir;
+    struct Accumulate {
+        delta_flags: Option<actions::ChangeFlags>,
+        dest_dir: Option<types::Folder>,
+        cache: bool,
+        cache_string: Option<String>,
+        invalidate_list: HashSet<String>,
+    }
+
+    let mut accumulated = Accumulate {
+        delta_flags: None,
+        dest_dir: None,
+        cache: false,
+        cache_string: None,
+        invalidate_list: HashSet::new(),
+    };
+
     let mut it = borrowed_actions.into_iter();
     loop {
         let contain_owned_action: actions::Action;
@@ -64,21 +80,29 @@ fn process_message(
         };
 
         let out_actions;
-
         match next_action {
             actions::Action::Logic(function) => {
-                out_actions = function.process_msg(&message, folder);
+                out_actions = function.process_msg(&message, folder)
             }
             actions::Action::Flags(change) => {
-                flags = change;
+                accumulated.delta_flags = Some(change.clone());
                 break;
             }
             actions::Action::Move(dest) => {
-                dest_dir = dest;
+                accumulated.dest_dir = Some(dest.clone());
+                break;
+            }
+            actions::Action::Cache(key) => {
+                accumulated.cache = true;
+                accumulated.cache_string = key.clone();
+                break;
+            }
+            actions::Action::InvalidateCache(key) => {
+                accumulated.invalidate_list.insert(key.clone());
                 break;
             }
             actions::Action::Stop => break,
-        }
+        };
 
         it = Box::new(
             out_actions
