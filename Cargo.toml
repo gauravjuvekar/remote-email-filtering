@@ -10,6 +10,7 @@ clap = { version = "4.4.13", features = ["derive"] }
 email-lib = "0.19.6"
 maybe-owned = "0.3.4"
 rand = "0.8.5"
+thiserror = "1.0.61"
 
 [lib]
 name = "remote_email_filtering"

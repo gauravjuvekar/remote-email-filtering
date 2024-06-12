@@ -3,12 +3,29 @@
 //!
 
 use crate::types;
+use core::result::Result;
+use thiserror::Error;
 
 pub struct ChangeFlags {
     set: types::Flags,
     clear: types::Flags,
 }
 
+#[derive(Error, Debug)]
+#[error("set and clear flags must not intersect")]
+pub struct AmbiguousChangeFlagsError;
+
+/// Make a [`Action::Flags`] using two disjoint set of flags
+pub fn make_flags_action(
+    context: types::Context,
+    set: types::Flags,
+    clear: types::Flags,
+) -> Result<Action, AmbiguousChangeFlagsError> {
+    match set.intersection(&clear).next() {
+        Some(_) => Err(AmbiguousChangeFlagsError),
+        None => Ok(Action::Flags(ChangeFlags { set, clear })),
+    }
+}
 
 /// A custom filter that returns one or more other [`Action`] variants.
 pub trait LogicAction {
@@ -18,7 +35,6 @@ pub trait LogicAction {
         msg: &types::Message,
         folder: &types::Folder,
     ) -> Vec<Action>;
-
 
     /// Do not override.
     // Helper to forward [types::Context] to the [types::Message]

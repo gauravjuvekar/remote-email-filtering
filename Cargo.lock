@@ -2651,6 +2651,7 @@ dependencies = [
  "email-lib",
  "maybe-owned",
  "rand",
+ "thiserror",
 ]
 
 [[package]]
