@@ -6,11 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.89"
 clap = { version = "4.4.13", features = ["derive"] }
 email-lib = "0.19.6"
+http = "1.1.0"
 maybe-owned = "0.3.4"
+oauth2 = "4.4.2"
 rand = "0.8.5"
+reqwest = { version = "0.12.5", default-features = false, features = ["rustls-tls", "blocking"] }
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.120"
 thiserror = "1.0.61"
+url = "2.5.2"
 
 [lib]
 name = "remote_email_filtering"
@@ -19,3 +26,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "filter-emails"
 path = "src/main.rs"
+
+[[bin]]
+name = "google-oauth2-auth"
+path = "utils/google_oauth2_auth/main.rs"
