@@ -1,7 +1,6 @@
 // Mostly taken from
 // https://github.com/ramosbugs/oauth2-rs/blob/main/examples/google.rs
 
-use anyhow::anyhow;
 use clap;
 use oauth2;
 use reqwest;
@@ -27,6 +26,36 @@ struct Cli {
     google_clients_secret: String,
     output_bearer_token: String,
 }
+
+fn translate_request(
+    req: oauth2::HttpRequest,
+    client: &reqwest::blocking::Client
+) -> reqwest::blocking::Request {
+    let (parts, body) = req.into_parts();
+    let uri_str: std::string::String = parts.uri.to_string();
+    client
+        .request(parts.method, uri_str)
+        .headers(parts.headers)
+        .body(body)
+        .build()
+        .expect("should build")
+}
+
+fn translate_response(
+    res: reqwest::blocking::Response,
+) -> oauth2::HttpResponse {
+    let mut builder = http::response::Builder::new();
+    builder = builder.status(res.status()).version(res.version());
+    {
+        let headers = builder.headers_mut().unwrap();
+        for (key, value) in res.headers().iter() {
+            headers.append(key.clone(), value.clone());
+        }
+    }
+    let u8_body: Vec<u8> = res.bytes().unwrap().into();
+    builder.body(u8_body).unwrap()
+}
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = <Cli as clap::Parser>::parse();
@@ -59,12 +88,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (pkce_code_challenge, pkce_code_verifier) =
         oauth2::PkceCodeChallenge::new_random_sha256();
 
-    let client = oauth2::basic::BasicClient::new(
-        oauth2::ClientId::new(oauth2_inputs.client_id),
-        Some(oauth2::ClientSecret::new(oauth2_inputs.client_secret)),
-        oauth2::AuthUrl::new(oauth2_inputs.auth_uri)?,
-        Some(oauth2::TokenUrl::new(oauth2_inputs.token_uri)?),
-    )
+    let client = oauth2::basic::BasicClient::new(oauth2::ClientId::new(
+        oauth2_inputs.client_id,
+    ))
+    .set_client_secret(oauth2::ClientSecret::new(oauth2_inputs.client_secret))
+    .set_auth_uri(oauth2::AuthUrl::new(oauth2_inputs.auth_uri)?)
+    .set_token_uri(oauth2::TokenUrl::new(oauth2_inputs.token_uri)?)
     .set_redirect_uri(
         oauth2::RedirectUrl::new(redirect_uri.clone())
             .expect("Correct redirect URI"),
@@ -131,18 +160,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Returned code is {code}\n");
 
-    let http_client = reqwest::blocking::ClientBuilder::new()
+    let req_client = reqwest::blocking::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("reqwest client should build");
 
-    let exec_request = |http_request: oauth2::HttpRequest| {
+    let http_client_fn = move |req: oauth2::HttpRequest| {
+        let resp = req_client.execute(translate_request(req, &req_client))?;
+        Result::<http::Response<Vec<u8>>, reqwest::Error>::Ok(
+            translate_response(resp),
+        )
     };
+
 
     let token = client
         .exchange_code(oauth2::AuthorizationCode::new(code))
         .set_pkce_verifier(pkce_code_verifier)
-        .request(&oauth2::reqwest::http_client)
+        .request(&http_client_fn)
         .expect("A refresh token");
 
     let refresh = oauth2::TokenResponse::refresh_token(&token).unwrap();
