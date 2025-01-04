@@ -29,7 +29,7 @@ struct Cli {
 
 fn translate_request(
     req: oauth2::HttpRequest,
-    client: &reqwest::blocking::Client
+    client: &reqwest::blocking::Client,
 ) -> reqwest::blocking::Request {
     let (parts, body) = req.into_parts();
     let uri_str: std::string::String = parts.uri.to_string();
@@ -55,7 +55,6 @@ fn translate_response(
     let u8_body: Vec<u8> = res.bytes().unwrap().into();
     builder.body(u8_body).unwrap()
 }
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = <Cli as clap::Parser>::parse();
@@ -171,7 +170,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             translate_response(resp),
         )
     };
-
 
     let token = client
         .exchange_code(oauth2::AuthorizationCode::new(code))
