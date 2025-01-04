@@ -1,12 +1,31 @@
 // Mostly taken from
 // https://github.com/ramosbugs/oauth2-rs/blob/main/examples/google.rs
 
+use anyhow::{anyhow, Context, Result};
 use clap;
 use oauth2;
 use reqwest;
 use serde;
 use serde_json as json;
 use url;
+
+#[derive(Debug, PartialEq, clap::Subcommand)]
+enum Commands {
+    InitialGrant {
+        google_clients_secret: String,
+        output_refresh_token: String,
+    },
+    Refresh {
+        in_out_refresh_token: String,
+    },
+}
+
+#[derive(Debug, serde::Serialize)]
+struct Oauth2FinalOutputs {
+    access_token: String,
+    refresh_token: String,
+    scopes: Vec<String>,
+}
 
 #[derive(Debug, serde::Deserialize)]
 struct Oauth2AuthInputs {
@@ -23,8 +42,8 @@ struct GoogleClientSecret {
 
 #[derive(Debug, clap::Parser)]
 struct Cli {
-    google_clients_secret: String,
-    output_bearer_token: String,
+    #[command(subcommand)]
+    command: Commands,
 }
 
 fn translate_request(
@@ -56,11 +75,12 @@ fn translate_response(
     builder.body(u8_body).unwrap()
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = <Cli as clap::Parser>::parse();
-
-    let input = std::fs::File::open(args.google_clients_secret)
-        .expect("File should open");
+fn initial_grant_flow(
+    in_client_secrets: String,
+    out_secrets: String,
+) -> Result<()> {
+    let input =
+        std::fs::File::open(in_client_secrets).expect("File should open");
 
     let mut deserializer =
         json::Deserializer::from_reader(std::io::BufReader::new(input));
@@ -154,7 +174,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     if state != *csrf_state.secret() {
-        return Err("Returned state did not match CSRF token".into());
+        return Err(anyhow!("Returned state did not match CSRF token"));
     }
 
     println!("Returned code is {code}\n");
@@ -177,13 +197,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .request(&http_client_fn)
         .expect("A refresh token");
 
-    let refresh = oauth2::TokenResponse::refresh_token(&token).unwrap();
+    let refresh = oauth2::TokenResponse::refresh_token(&token)
+        .expect("Should also get a refresh token");
     let access = oauth2::TokenResponse::access_token(&token);
     let duration = oauth2::TokenResponse::expires_in(&token).unwrap();
 
     println!("Refresh token: {}", refresh.secret());
     println!("access_token token: {}", access.secret());
     println!("duration: {}", duration.as_secs());
+
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let args = <Cli as clap::Parser>::parse();
+
+    let _ = match args.command {
+        Commands::InitialGrant {
+            google_clients_secret,
+            output_refresh_token,
+        } => initial_grant_flow(google_clients_secret, output_refresh_token),
+
+        Commands::Refresh {
+            in_out_refresh_token,
+        } => Err(anyhow!("Todo")),
+    };
 
     Ok(())
 }
