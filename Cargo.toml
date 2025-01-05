@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.89"
+chrono = { version = "0.4.39", features = ["serde"] }
 clap = { version = "4.4.13", features = ["derive"] }
 http = "=1.1.0"
 maybe-owned = "0.3.4"

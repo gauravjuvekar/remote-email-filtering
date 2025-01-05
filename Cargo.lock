@@ -887,6 +887,7 @@ name = "remote-email-filtering"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "http",
  "maybe-owned",
