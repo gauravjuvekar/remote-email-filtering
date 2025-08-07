@@ -28,14 +28,17 @@ struct Cli {
 }
 
 fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::filter::EnvFilter::from_default_env(),
+        )
+        .init();
+
     let args = <Cli as clap::Parser>::parse();
 
     if args.command == Commands::Filter {
         let my_filter =
-            ref_::actions::Action::Logic(Box::new(ref_::filters::Print {
-                some_state: 13,
-                message: "const action".to_string(),
-            }));
+            ref_::actions::Action::Logic(Box::new(ref_::filters::DebugPrint));
 
         let spec = vec![(
             ref_::types::Folder {

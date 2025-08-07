@@ -1,37 +1,22 @@
 use maybe_owned::MaybeOwned;
-use rand;
 use std::collections::HashSet;
+use tracing::{info, info_span};
 
 use crate::actions;
 use crate::types;
 
-pub struct Print {
-    pub message: String,
-    pub some_state: u32,
-}
+pub struct DebugPrint;
 
-impl actions::LogicAction for Print {
+impl actions::LogicAction for DebugPrint {
     fn process_msg(
         &self,
         msg: &types::Message,
         folder: &types::Folder,
     ) -> Vec<actions::Action> {
-        println!("Acting on {} in {}", msg.id, folder.path[0]);
+        info!("Acting on {} in {}", msg.id, folder.path[0]);
+        std::thread::sleep(std::time::Duration::from_secs(1));
 
-        let mut ret: Vec<actions::Action> = vec![];
-        if rand::random() {
-            ret.push(actions::Action::Logic(Box::new(Print {
-                message: "dynamically created".to_string(),
-                some_state: rand::random(),
-            })));
-        }
-        ret
-    }
-}
-
-impl Drop for Print {
-    fn drop(&mut self) {
-        println!("Print {} was dropped", self.message);
+        vec![]
     }
 }
 
@@ -125,9 +110,11 @@ fn process_folder(
 pub fn mainloop(filter_spec: &types::FilterSpec) {
     loop {
         for (folder, actions) in filter_spec {
-            println!("Processing {}", folder.path[0]);
-            process_folder(&folder, actions);
-            println!("done");
+            info_span!("process_folder", folder = folder.path[0]).in_scope(
+                || {
+                    process_folder(&folder, actions);
+                },
+            );
         }
     }
 }
