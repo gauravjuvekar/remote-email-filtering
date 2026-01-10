@@ -1,5 +1,5 @@
-client_secret.json
-authorized_secret.json
+*client_secret.json
+*authorized_secret.json
 parameters.json
 build
 __pycache__

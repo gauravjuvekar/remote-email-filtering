@@ -34,3 +34,7 @@ path = "src/main.rs"
 [[bin]]
 name = "google-oauth2-auth"
 path = "utils/google_oauth2_auth/main.rs"
+
+[[bin]]
+name = "microsoft-oauth2-auth"
+path = "utils/microsoft_oauth2_auth/main.rs"
