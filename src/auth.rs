@@ -216,6 +216,7 @@ pub fn authorize(config: &ProviderConfig) -> Result<PersistedSecrets, Authorizat
             let (display_url, csrf_state) = client
                 .authorize_url(oauth2::CsrfToken::new_random)
                 .add_scope(oauth2::Scope::new("https://mail.google.com".to_string()))
+                .add_scope(oauth2::Scope::new("https://www.googleapis.com/auth/userinfo.email".to_string()))
                 .set_pkce_challenge(pkce_code_challenge)
                 .url();
 

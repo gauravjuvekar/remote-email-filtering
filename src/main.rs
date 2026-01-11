@@ -7,7 +7,7 @@ use clap;
 #[derive(Debug, PartialEq, clap::Subcommand)]
 enum Commands {
     /// Run filters
-    Filter,
+    Filter(Filter),
 
     /// Login
     Login(Login),
@@ -20,8 +20,20 @@ struct Login {
     /// provider specific config file
     config_json: std::path::PathBuf,
 
-    /// output file with authorized oauth2 tokens
+    /// output file with authorized OAuth2 tokens
     authorized_json: std::path::PathBuf,
+}
+
+#[derive(Debug, PartialEq, clap::Args)]
+struct Filter {
+    provider: auth::Provider,
+
+    /// file with authorized OAuth2 tokens from the 'login' command
+    authorized_json: std::path::PathBuf,
+
+    /// email address to use. queried using OAuth2 API if unspecified
+    #[arg(short, long)]
+    email: Option<String>,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -62,7 +74,7 @@ fn main() -> Result<(), anyhow::Error> {
             serde_json::to_writer(writer, &perstable_secret)?;
             Ok(())
         },
-        Commands::Filter => {
+        Commands::Filter(filter) => {
             let my_filter = ref_::actions::Action::Logic(Box::new(ref_::filters::DebugPrint));
 
             let spec = vec![(
