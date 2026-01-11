@@ -24,6 +24,7 @@ tracing-subscriber = { version = "0.3.19", features = ["chrono", "env-filter"] }
 url = "2.5.2"
 secrecy = { version = "0.10.3", features = ["serde"] }
 status-line = "0.2.0"
+qr2term = "0.3.3"
 
 [lib]
 name = "remote_email_filtering"
@@ -32,7 +33,3 @@ path = "src/lib.rs"
 [[bin]]
 name = "filter-emails"
 path = "src/main.rs"
-
-[[bin]]
-name = "microsoft-oauth2-auth"
-path = "utils/microsoft_oauth2_auth/main.rs"

@@ -81,7 +81,10 @@ pub fn serialize_optional_secret_string<S: serde::Serializer>(
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PersistedSecrets {
     client_id: String,
-    #[serde(serialize_with = "serialize_optional_secret_string")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_optional_secret_string"
+    )]
     client_secret: Option<SecretString>,
     #[serde(serialize_with = "serialize_secret_string")]
     refresh_token: SecretString,
@@ -176,6 +179,7 @@ pub fn authorize(config: &ProviderConfig) -> Result<PersistedSecrets, Authorizat
         ProviderConfig::Google(c) => {
             // Google uses RFC6749-section 4.1 Authorization Code Grant with RFC8252-section 7.3
             // Lopback Interface Redirection (with PKCE)
+            // https://developers.google.com/identity/protocols/oauth2/native-app#redirect-uri_loopback
             use std::net::{SocketAddr, TcpListener};
 
             // Try both IPv4 and IPv6 loopback address
@@ -216,7 +220,9 @@ pub fn authorize(config: &ProviderConfig) -> Result<PersistedSecrets, Authorizat
             let (display_url, csrf_state) = client
                 .authorize_url(oauth2::CsrfToken::new_random)
                 .add_scope(oauth2::Scope::new("https://mail.google.com".to_string()))
-                .add_scope(oauth2::Scope::new("https://www.googleapis.com/auth/userinfo.email".to_string()))
+                .add_scope(oauth2::Scope::new(
+                    "https://www.googleapis.com/auth/userinfo.email".to_string(),
+                ))
                 .set_pkce_challenge(pkce_code_challenge)
                 .url();
 
@@ -354,7 +360,100 @@ pub fn authorize(config: &ProviderConfig) -> Result<PersistedSecrets, Authorizat
         }
 
         ProviderConfig::Microsoft(c) => {
-            todo!()
+            // Microsoft uses RFC8628 OAuth 2.0 Device Authorization Grant
+            // https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code
+
+            let devicecode_url_str = c.devicecode_url.clone();
+            let devicecode_url =
+                oauth2::DeviceAuthorizationUrl::new(devicecode_url_str).map_err(|e| {
+                    AuthorizationError::ConfigError {
+                        source: e,
+                        field: "devicecode_url".to_string(),
+                    }
+                })?;
+
+            let client =
+                oauth2::basic::BasicClient::new(oauth2::ClientId::new(c.client_id.clone()))
+                    .set_auth_uri(auth_url)
+                    .set_token_uri(token_url)
+                    .set_device_authorization_url(devicecode_url);
+
+            let device_auth_response: oauth2::StandardDeviceAuthorizationResponse = client
+                .exchange_device_code()
+                .add_scope(oauth2::Scope::new(
+                    "https://outlook.office.com/IMAP.AccessAsUser.All".to_string(),
+                ))
+                .add_scope(oauth2::Scope::new("offline_access".to_string()))
+                .request(&get_request_fn())
+                .map_err(|e| AuthorizationError::ResponseError {
+                    source: Some(e.into()),
+                    msg: "obtaining device authorization details".to_string(),
+                })?;
+
+            let display_url = device_auth_response.verification_uri();
+            let user_code = device_auth_response.user_code().clone().into_secret();
+
+            let qr_string = qr2term::generate_qr_string(display_url.to_string())
+                .map_err(|e| AuthorizationError::Unknown { source: e.into() })?;
+
+            let qr_string: String = qr_string
+                .split_inclusive('\n')
+                .map(|l| format!("\t{}", l))
+                .collect();
+
+            println!("Open this URL on any device:\n\n\t{}\n", display_url);
+            print!("{}", qr_string);
+            println!("\nand enter the code: {}\n", user_code,);
+
+            let expiry_duration = std::cmp::min(
+                device_auth_response.expires_in(),
+                std::time::Duration::from_secs(300),
+            );
+
+            let deadline = std::time::Instant::now() + expiry_duration;
+
+            let remaining_time = status_line::StatusLine::new(RemainingTimeSecs(
+                std::sync::atomic::AtomicU64::new((deadline - std::time::Instant::now()).as_secs()),
+            ));
+
+            let tokens = client
+                .exchange_device_access_token(&device_auth_response)
+                .request(
+                    &get_request_fn(),
+                    |d| {
+                        std::thread::sleep(d);
+                        remaining_time.0.store(
+                            (deadline - std::time::Instant::now()).as_secs(),
+                            std::sync::atomic::Ordering::Relaxed,
+                        );
+                    },
+                    Some(expiry_duration),
+                )
+                .map_err(|e| AuthorizationError::ResponseError {
+                    source: Some(e.into()),
+                    msg: "while waiting for user to complete authorization".to_string(),
+                })?;
+            drop(remaining_time);
+
+            Ok(PersistedSecrets {
+                client_id: c.client_id.clone(),
+                client_secret: None,
+                refresh_token: tokens
+                    .refresh_token()
+                    .ok_or_else(|| AuthorizationError::ResponseError {
+                        source: None,
+                        msg: "missing refresh token in response".to_string(),
+                    })?
+                    .clone()
+                    .into_secret()
+                    .into(),
+                access_token: tokens.access_token().clone().into_secret().into(),
+                access_token_validity: chrono::Utc::now()
+                    + tokens
+                        .expires_in()
+                        .unwrap_or_else(|| std::time::Duration::from_secs(0)),
+                token_url: token_url_str,
+            })
         }
     }
 }
