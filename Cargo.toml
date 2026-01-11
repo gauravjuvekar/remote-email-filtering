@@ -22,6 +22,8 @@ thiserror = "1.0.61"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["chrono", "env-filter"] }
 url = "2.5.2"
+secrecy = { version = "0.10.3", features = ["serde"] }
+status-line = "0.2.0"
 
 [lib]
 name = "remote_email_filtering"
@@ -30,10 +32,6 @@ path = "src/lib.rs"
 [[bin]]
 name = "filter-emails"
 path = "src/main.rs"
-
-[[bin]]
-name = "google-oauth2-auth"
-path = "utils/google_oauth2_auth/main.rs"
 
 [[bin]]
 name = "microsoft-oauth2-auth"
