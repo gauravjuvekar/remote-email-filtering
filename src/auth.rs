@@ -11,7 +11,6 @@ pub enum AuthorizationError {
         source: oauth2::url::ParseError,
         field: String,
     },
-
     #[error("unexpected response: {msg}")]
     ResponseError {
         source: Option<anyhow::Error>,
@@ -77,7 +76,9 @@ pub fn serialize_optional_secret_string<S: serde::Serializer>(
     }
 }
 
-/// Secrets enought to obtain access tokens from refresh tokens
+type AccessToken = SecretString;
+
+/// Secrets enough to obtain access tokens from refresh tokens
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PersistedSecrets {
     client_id: String,
@@ -89,7 +90,7 @@ pub struct PersistedSecrets {
     #[serde(serialize_with = "serialize_secret_string")]
     refresh_token: SecretString,
     #[serde(serialize_with = "serialize_secret_string")]
-    access_token: SecretString,
+    access_token: AccessToken,
     access_token_validity: chrono::DateTime<chrono::Utc>,
     token_url: String,
 }
@@ -130,12 +131,114 @@ fn get_request_fn(
         .build()
         .expect("reqwest client should build");
 
-    let http_client_fn = move |req: oauth2::HttpRequest| {
+    move |req: oauth2::HttpRequest| {
         let resp = req_client.execute(translate_request(req, &req_client))?;
         Result::<http::Response<Vec<u8>>, reqwest::Error>::Ok(translate_response(resp))
-    };
+    }
+}
 
-    http_client_fn
+fn get_request_fn_async() -> reqwest::Client {
+    reqwest::ClientBuilder::new()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("reqwest client shoudl build")
+}
+
+pub struct TokenManager {
+    secrets: PersistedSecrets,
+    storage: Option<std::fs::File>,
+    client: oauth2::Client<
+        oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>,
+        oauth2::StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>,
+        oauth2::StandardTokenIntrospectionResponse<
+            oauth2::EmptyExtraTokenFields,
+            oauth2::basic::BasicTokenType,
+        >,
+        oauth2::StandardRevocableToken,
+        oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>,
+        oauth2::EndpointNotSet,
+        oauth2::EndpointNotSet,
+        oauth2::EndpointNotSet,
+        oauth2::EndpointNotSet,
+        oauth2::EndpointSet,
+    >,
+}
+
+impl TokenManager {
+    pub fn new(
+        secrets: PersistedSecrets,
+        storage: Option<std::fs::File>,
+    ) -> Result<TokenManager, AuthorizationError> {
+        let token_url = oauth2::TokenUrl::new(secrets.token_url.clone()).map_err(|e| {
+            AuthorizationError::ConfigError {
+                source: e,
+                field: "token_url".to_string(),
+            }
+        })?;
+
+        debug!("creating new token manager with url {token_url}");
+        debug!(
+            "existing token valid till {}",
+            secrets.access_token_validity
+        );
+
+        let client =
+            oauth2::basic::BasicClient::new(oauth2::ClientId::new(secrets.client_id.clone()))
+                .set_token_uri(token_url);
+
+        Ok(TokenManager {
+            secrets,
+            storage,
+            client,
+        })
+    }
+
+    pub async fn access_token(&mut self) -> Result<AccessToken, anyhow::Error> {
+        if self.secrets.access_token_validity < chrono::Utc::now() {
+            debug!(
+                "refreshing access token that expired at {}",
+                self.secrets.access_token_validity
+            );
+            let client = self.client.clone();
+            let refresh_token = {
+                use secrecy::ExposeSecret;
+                oauth2::RefreshToken::new(self.secrets.refresh_token.expose_secret().to_string())
+            };
+            let refresh_token_request = client.exchange_refresh_token(&refresh_token);
+            let new_token = refresh_token_request
+                .request_async(&get_request_fn_async())
+                .await
+                .map_err(|e| AuthorizationError::ResponseError {
+                    source: Some(e.into()),
+                    msg: "whlie refreshing an access token".to_string(),
+                })?;
+
+            self.secrets.access_token = new_token.access_token().clone().into_secret().into();
+            self.secrets.access_token_validity = chrono::Utc::now()
+                + new_token
+                    .expires_in()
+                    .unwrap_or_else(|| std::time::Duration::from_secs(0));
+
+            if let Some(new_refresh) = new_token.refresh_token() {
+                self.secrets.refresh_token = new_refresh.clone().into_secret().into();
+            }
+        }
+
+        Ok(self.secrets.access_token.clone())
+    }
+}
+
+impl Drop for TokenManager {
+    fn drop(&mut self) {
+        use std::os::unix::prelude::FileExt;
+        if let Some(f) = &self.storage {
+            let res = f.write_all_at(
+                &serde_json::to_vec(&self.secrets).expect("should serialize"),
+                0,
+            );
+            debug!("serialized latest secrets to {f:?}: {res:?}");
+        }
+    }
 }
 
 pub fn authorize(config: &ProviderConfig) -> Result<PersistedSecrets, AuthorizationError> {
@@ -282,7 +385,7 @@ pub fn authorize(config: &ProviderConfig) -> Result<PersistedSecrets, Authorizat
                             }
                         })?;
 
-                        let get_url = url::Url::parse(&(redirect_url_str.clone() + &get_query))
+                        let get_url = url::Url::parse(&(redirect_url_str.clone() + get_query))
                             .expect("valid GET URL");
 
                         let mut query_dict = std::collections::HashMap::<String, String>::from_iter(

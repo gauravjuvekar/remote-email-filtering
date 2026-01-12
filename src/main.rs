@@ -2,8 +2,6 @@ mod auth;
 
 use remote_email_filtering as ref_;
 
-use clap;
-
 #[derive(Debug, PartialEq, clap::Subcommand)]
 enum Commands {
     /// Run filters
@@ -50,11 +48,11 @@ fn parse_config(
     match provider {
         auth::Provider::Google => {
             let config: auth::GoogleProviderConfig = serde_json::from_str(&string)?;
-            return Ok(auth::ProviderConfig::Google(config));
+            Ok(auth::ProviderConfig::Google(config))
         }
         auth::Provider::Microsoft => {
             let config: auth::MicrosoftProviderConfig = serde_json::from_str(&string)?;
-            return Ok(auth::ProviderConfig::Microsoft(config));
+            Ok(auth::ProviderConfig::Microsoft(config))
         }
     }
 }
@@ -68,13 +66,30 @@ fn main() -> Result<(), anyhow::Error> {
 
     match args.command {
         Commands::Login(login) => {
-            let perstable_secret = auth::authorize(&parse_config(login.provider, login.config_json)?)?;
+            let persistable_secret =
+                auth::authorize(&parse_config(login.provider, login.config_json)?)?;
             let file = std::fs::File::create(login.authorized_json)?;
-            let mut writer = std::io::BufWriter::new(file);
-            serde_json::to_writer(writer, &perstable_secret)?;
+            let writer = std::io::BufWriter::new(file);
+            serde_json::to_writer(writer, &persistable_secret)?;
             Ok(())
-        },
+        }
         Commands::Filter(filter) => {
+            let f = std::fs::File::open(filter.authorized_json.clone())?;
+            let secrets: auth::PersistedSecrets =
+                serde_json::from_reader(std::io::BufReader::new(f))?;
+            let f = std::fs::OpenOptions::new()
+                .write(true)
+                .open(filter.authorized_json)?;
+
+            let mut token_manager = auth::TokenManager::new(secrets, Some(f))?;
+
+            let access_token =
+                tokio::runtime::Runtime::new()?.block_on(token_manager.access_token())?;
+
+            println!("Got access token {access_token:?}");
+
+            drop(token_manager);
+
             let my_filter = ref_::actions::Action::Logic(Box::new(ref_::filters::DebugPrint));
 
             let spec = vec![(
