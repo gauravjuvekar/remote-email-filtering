@@ -26,6 +26,11 @@ status-line = "0.2.0"
 qr2term = "0.3.3"
 tokio = { version = "1.49.0", features = ["full"] }
 async-imap = { version = "0.11.1", features = ["runtime-tokio"], default-features = false }
+rsasl = { version = "2.2.0", default-features = false, features = ["oauthbearer", "registry_static", "xoauth2"] }
+logged-stream = "0.4.1"
+tokio-rustls = "0.26.4"
+rustls = "0.23.36"
+webpki-roots = "1.0.5"
 
 [lib]
 name = "remote_email_filtering"

@@ -1,6 +1,8 @@
 mod auth;
+mod client;
 
 use remote_email_filtering as ref_;
+use tracing::debug;
 
 #[derive(Debug, PartialEq, clap::Subcommand)]
 enum Commands {
@@ -31,7 +33,7 @@ struct Filter {
 
     /// email address to use. queried using OAuth2 API if unspecified
     #[arg(short, long)]
-    email: Option<String>,
+    email: String,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -82,13 +84,24 @@ fn main() -> Result<(), anyhow::Error> {
                 .open(filter.authorized_json)?;
 
             let mut token_manager = auth::TokenManager::new(secrets, Some(f))?;
+            let provider = filter.provider;
+            let user = filter.email;
 
-            let access_token =
-                tokio::runtime::Runtime::new()?.block_on(token_manager.access_token())?;
+            let runtime = tokio::runtime::Runtime::new()?;
+
+            let access_token = runtime.block_on(token_manager.access_token())?;
 
             println!("Got access token {access_token:?}");
 
-            drop(token_manager);
+            let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
+            let mut client_factory = client::ConnectionFactory::new(provider, user, token_manager);
+
+            let connection = runtime.block_on(client_factory.connection());
+
+            debug!("made first connection {:?}", connection);
+
+            todo!();
 
             let my_filter = ref_::actions::Action::Logic(Box::new(ref_::filters::DebugPrint));
 

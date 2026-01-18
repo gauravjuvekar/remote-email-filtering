@@ -30,48 +30,6 @@ pub enum Provider {
     Microsoft,
 }
 
-pub enum SaslMechanism {
-    XOAuth2,
-    OAuthBearer,
-}
-
-pub struct ImapConfig {
-    host: String,
-    port: u16,
-    sasl_mechanism: SaslMechanism,
-}
-
-impl Provider {
-    pub fn imap_config(&self, login: String) -> ImapConfig {
-        ImapConfig {
-            host: match self {
-                Provider::Google => "imap.gmail.com".to_string(),
-                Provider::Microsoft => "outlook.office365.com".to_string(),
-            },
-            port: match self {
-                Provider::Google | Provider::Microsoft => 993,
-            },
-            sasl_mechanism: match self {
-                Provider::Google | Provider::Microsoft => SaslMechanism::XOAuth2,
-            },
-        }
-    }
-}
-
-struct BackendImapAuthConfig {
-    provider: Provider,
-    token_manager: TokenManager,
-}
-
-impl BackendImapAuthConfig {
-    pub fn new(provider: Provider, token_manager: TokenManager) -> Self {
-        BackendImapAuthConfig {
-            provider,
-            token_manager,
-        }
-    }
-}
-
 #[derive(Debug, Deserialize)]
 pub struct GoogleProviderConfig {
     client_id: String,
@@ -91,13 +49,6 @@ pub struct MicrosoftProviderConfig {
 pub enum ProviderConfig {
     Google(GoogleProviderConfig),
     Microsoft(MicrosoftProviderConfig),
-}
-
-fn config_to_provider(config: &ProviderConfig) -> Provider {
-    match config {
-        ProviderConfig::Google(_) => Provider::Google,
-        ProviderConfig::Microsoft(_) => Provider::Microsoft,
-    }
 }
 
 pub fn serialize_secret_string<S: serde::Serializer>(
@@ -224,9 +175,15 @@ impl TokenManager {
             secrets.access_token_validity
         );
 
-        let client =
+        let mut client =
             oauth2::basic::BasicClient::new(oauth2::ClientId::new(secrets.client_id.clone()))
                 .set_token_uri(token_url);
+        if let Some(ref client_secret) = secrets.client_secret {
+            use secrecy::ExposeSecret;
+            client = client.set_client_secret(oauth2::ClientSecret::new(
+                client_secret.expose_secret().to_string(),
+            ));
+        }
 
         Ok(TokenManager {
             secrets,
