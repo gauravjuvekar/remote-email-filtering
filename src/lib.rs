@@ -3,6 +3,7 @@
 //!
 
 pub mod actions;
+pub mod auth;
 pub mod filters;
 pub mod folder;
 pub mod types;

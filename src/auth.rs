@@ -30,6 +30,48 @@ pub enum Provider {
     Microsoft,
 }
 
+pub enum SaslMechanism {
+    XOAuth2,
+    OAuthBearer,
+}
+
+pub struct ImapConfig {
+    host: String,
+    port: u16,
+    sasl_mechanism: SaslMechanism,
+}
+
+impl Provider {
+    pub fn imap_config(&self, login: String) -> ImapConfig {
+        ImapConfig {
+            host: match self {
+                Provider::Google => "imap.gmail.com".to_string(),
+                Provider::Microsoft => "outlook.office365.com".to_string(),
+            },
+            port: match self {
+                Provider::Google | Provider::Microsoft => 993,
+            },
+            sasl_mechanism: match self {
+                Provider::Google | Provider::Microsoft => SaslMechanism::XOAuth2,
+            },
+        }
+    }
+}
+
+struct BackendImapAuthConfig {
+    provider: Provider,
+    token_manager: TokenManager,
+}
+
+impl BackendImapAuthConfig {
+    pub fn new(provider: Provider, token_manager: TokenManager) -> Self {
+        BackendImapAuthConfig {
+            provider,
+            token_manager,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct GoogleProviderConfig {
     client_id: String,
