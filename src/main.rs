@@ -1,8 +1,4 @@
-mod auth;
-mod client;
-
-use remote_email_filtering as ref_;
-use tracing::debug;
+use remote_email_filtering::*;
 
 #[derive(Debug, PartialEq, clap::Subcommand)]
 enum Commands {
@@ -83,7 +79,7 @@ fn main() -> Result<(), anyhow::Error> {
                 .write(true)
                 .open(filter.authorized_json)?;
 
-            let mut token_manager = auth::TokenManager::new(secrets, Some(f))?;
+            let token_manager = auth::TokenManager::new(secrets, Some(f))?;
             let provider = filter.provider;
             let user = filter.email;
 
@@ -91,22 +87,18 @@ fn main() -> Result<(), anyhow::Error> {
 
             let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-            let mut client_factory = client::ConnectionFactory::new(provider, user, token_manager);
+            let client_factory = client::ConnectionFactory::new(provider, user, token_manager);
 
-            let connection = runtime.block_on(client_factory.connection());
-
-            todo!();
-
-            let my_filter = ref_::actions::Action::Logic(Box::new(ref_::filters::DebugPrint));
+            let my_filter = actions::Action::Logic(Box::new(filters::DebugPrint));
 
             let spec = vec![(
-                ref_::types::Folder {
+                types::Folder {
                     path: vec!["INBOX".to_string()],
                 },
                 vec![my_filter],
             )];
-            ref_::filters::mainloop(&spec);
-            Ok(())
+
+            runtime.block_on(filters::mainloop(&spec, client_factory))
         }
     }
 }

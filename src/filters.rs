@@ -3,16 +3,13 @@ use std::collections::HashSet;
 use tracing::{info, info_span};
 
 use crate::actions;
+use crate::client;
 use crate::types;
 
 pub struct DebugPrint;
 
 impl actions::LogicAction for DebugPrint {
-    fn process_msg(
-        &self,
-        msg: &types::Message,
-        folder: &types::Folder,
-    ) -> Vec<actions::Action> {
+    fn process_msg(&self, msg: &types::Message, folder: &types::Folder) -> Vec<actions::Action> {
         info!("Acting on {} in {}", msg.id, folder.path[0]);
         std::thread::sleep(std::time::Duration::from_secs(1));
 
@@ -25,9 +22,7 @@ fn process_message(
     folder: &types::Folder,
     actions: &Vec<actions::Action>,
 ) -> () {
-    let borrowed_actions: Box<
-        dyn Iterator<Item = MaybeOwned<actions::Action>>,
-    > = {
+    let borrowed_actions: Box<dyn Iterator<Item = MaybeOwned<actions::Action>>> = {
         let ret = actions
             .iter()
             .map(|e| MaybeOwned::<actions::Action>::Borrowed(e))
@@ -98,23 +93,21 @@ fn process_message(
     // TODO process accumulated
 }
 
-fn process_folder(
-    folder: &types::Folder,
-    actions: &Vec<actions::Action>,
-) -> () {
+fn process_folder(folder: &types::Folder, actions: &Vec<actions::Action>) -> () {
     for message in folder.list_messages() {
         process_message(message, folder, actions);
     }
 }
 
-pub fn mainloop(filter_spec: &types::FilterSpec) {
+pub async fn mainloop(
+    filter_spec: &types::FilterSpec<'_>,
+    connection_factory: crate::client::ConnectionFactory,
+) -> anyhow::Result<()> {
     loop {
         for (folder, actions) in filter_spec {
-            info_span!("process_folder", folder = folder.path[0]).in_scope(
-                || {
-                    process_folder(&folder, actions);
-                },
-            );
+            info_span!("process_folder", folder = folder.path[0]).in_scope(|| {
+                process_folder(&folder, actions);
+            });
         }
     }
 }
