@@ -126,6 +126,7 @@ dependencies = [
 [[package]]
 name = "async-imap"
 version = "0.11.1"
+source = "git+https://github.com/gauravjuvekar/async-imap.git?branch=capabilities-before-auth#9b6618ad178d37f3a2559aebea3c19b102767b5e"
 dependencies = [
  "async-channel 2.5.0",
  "async-compression",

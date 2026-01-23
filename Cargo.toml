@@ -9,7 +9,8 @@ insecure-raw-logging = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [patch."crates-io"]
-async-imap = { path = '../async-imap/' }
+async-imap = { git = 'https://github.com/gauravjuvekar/async-imap.git', branch = 'capabilities-before-auth'}
+# async-imap = { path = '../async-imap/' }
 
 [dependencies]
 rustls-webpki = "0.102"
