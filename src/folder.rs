@@ -1,6 +1,6 @@
 use crate::types::Message;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Folder {
     pub path: Vec<String>,
 }

@@ -1,6 +1,8 @@
+use anyhow::bail;
 use futures_util::StreamExt;
 use maybe_owned::MaybeOwned;
 use std::collections::HashSet;
+use tracing::{debug, error};
 use tracing::{info, info_span};
 
 use crate::actions;
@@ -105,11 +107,37 @@ pub async fn mainloop(
 ) -> anyhow::Result<()> {
     let mut connection = connection_factory.connection().await?;
 
-    let mut folders = connection.list(None, Some("*")).await?;
+    let capabilities = connection.capabilities().await?;
+    let required_capabilities: Vec<async_imap::types::Capability> = vec![
+        async_imap::types::Capability::Atom("MOVE".to_string()),
+        async_imap::types::Capability::Atom("UIDPLUS".to_string()),
+    ];
+    if !(required_capabilities
+        .iter()
+        .all(|c| capabilities.0.contains(c)))
+    {
+        bail!("Server does not support one of the required capabilities {required_capabilities:?}");
+    }
 
-    while let Some(mut folder) = folders.next().await {
-        let f: types::Folder = (&folder.unwrap()).into();
-        info!("Got folder {}", f);
+    let mut folders: HashSet<types::Folder> = std::collections::HashSet::new();
+    let mut folder_list = connection.list(None, Some("*")).await?;
+
+    while let Some(folder) = folder_list.next().await {
+        let f: types::Folder = (&folder?).into();
+        debug!("Got folder {}", f);
+        folders.insert(f);
+    }
+    info!("Server has {} folders", folders.len());
+
+    let mut all_filter_spec_folders_present = true;
+    for (folder, _action) in filter_spec {
+        if !folders.contains(folder) {
+            error!("Folder '{folder}' not found on the server");
+            all_filter_spec_folders_present = false;
+        }
+    }
+    if !all_filter_spec_folders_present {
+        bail!("folders in filter spec missing on server");
     }
 
     return Ok(());
