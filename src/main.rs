@@ -63,31 +63,28 @@ fn main() -> Result<(), anyhow::Error> {
     let args = <Cli as clap::Parser>::parse();
 
     match args.command {
-        Commands::Login(login) => {
+        Commands::Login(args) => {
             let persistable_secret =
-                auth::authorize(&parse_config(login.provider, login.config_json)?)?;
-            let file = std::fs::File::create(login.authorized_json)?;
+                auth::authorize(&parse_config(args.provider, args.config_json)?)?;
+            let file = std::fs::File::create(args.authorized_json)?;
             let writer = std::io::BufWriter::new(file);
             serde_json::to_writer(writer, &persistable_secret)?;
             Ok(())
         }
-        Commands::Filter(filter) => {
-            let f = std::fs::File::open(filter.authorized_json.clone())?;
+        Commands::Filter(args) => {
+            let f = std::fs::File::open(args.authorized_json.clone())?;
             let secrets: auth::PersistedSecrets =
                 serde_json::from_reader(std::io::BufReader::new(f))?;
             let f = std::fs::OpenOptions::new()
                 .write(true)
-                .open(filter.authorized_json)?;
+                .open(args.authorized_json)?;
 
             let token_manager = auth::TokenManager::new(secrets, Some(f))?;
-            let provider = filter.provider;
-            let user = filter.email;
-
-            let runtime = tokio::runtime::Runtime::new()?;
 
             let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-            let client_factory = client::ConnectionFactory::new(provider, user, token_manager);
+            let client_factory =
+                client::ConnectionFactory::new(args.provider, args.email, token_manager);
 
             let my_filter = actions::Action::Logic(Box::new(filters::DebugPrint));
 
@@ -98,6 +95,7 @@ fn main() -> Result<(), anyhow::Error> {
                 vec![my_filter],
             )];
 
+            let runtime = tokio::runtime::Runtime::new()?;
             runtime.block_on(filters::mainloop(&spec, client_factory))
         }
     }
