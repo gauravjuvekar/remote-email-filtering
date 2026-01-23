@@ -89,17 +89,11 @@ fn main() -> Result<(), anyhow::Error> {
 
             let runtime = tokio::runtime::Runtime::new()?;
 
-            let access_token = runtime.block_on(token_manager.access_token())?;
-
-            println!("Got access token {access_token:?}");
-
             let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
             let mut client_factory = client::ConnectionFactory::new(provider, user, token_manager);
 
             let connection = runtime.block_on(client_factory.connection());
-
-            debug!("made first connection {:?}", connection);
 
             todo!();
 

@@ -90,8 +90,8 @@ pub struct PersistedSecrets {
 
 impl secrecy::SerializableSecret for PersistedSecrets {}
 
-fn get_request_fn(
-) -> impl Fn(http::Request<Vec<u8>>) -> std::result::Result<oauth2::HttpResponse, reqwest::Error> {
+fn get_request_fn()
+-> impl Fn(http::Request<Vec<u8>>) -> std::result::Result<oauth2::HttpResponse, reqwest::Error> {
     fn translate_request(
         req: oauth2::HttpRequest,
         client: &reqwest::blocking::Client,
@@ -169,10 +169,12 @@ impl TokenManager {
             }
         })?;
 
-        debug!("creating new token manager with url {token_url}");
+        debug!("Creating new token manager with URL {token_url}");
         debug!(
-            "existing token valid till {}",
-            secrets.access_token_validity
+            "Existing token valid till {}",
+            secrets
+                .access_token_validity
+                .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
         );
 
         let mut client =
@@ -195,8 +197,10 @@ impl TokenManager {
     pub async fn access_token(&mut self) -> Result<AccessToken, anyhow::Error> {
         if self.secrets.access_token_validity < chrono::Utc::now() {
             debug!(
-                "refreshing access token that expired at {}",
-                self.secrets.access_token_validity
+                "Refreshing access token that expired at {}",
+                self.secrets
+                    .access_token_validity
+                    .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
             );
             let client = self.client.clone();
             let refresh_token = {
@@ -209,7 +213,7 @@ impl TokenManager {
                 .await
                 .map_err(|e| AuthorizationError::ResponseError {
                     source: Some(e.into()),
-                    msg: "whlie refreshing an access token".to_string(),
+                    msg: "while refreshing an access token".to_string(),
                 })?;
 
             self.secrets.access_token = new_token.access_token().clone().into_secret().into();
@@ -235,7 +239,7 @@ impl Drop for TokenManager {
                 &serde_json::to_vec(&self.secrets).expect("should serialize"),
                 0,
             );
-            debug!("serialized latest secrets to {f:?}: {res:?}");
+            debug!("Saving updated secrets to {f:?}: {res:?}");
         }
     }
 }

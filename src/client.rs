@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use secrecy::SecretString;
 use tokio_rustls::rustls;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::auth;
 use crate::auth::Provider;
@@ -176,7 +176,7 @@ impl ConnectionFactory {
             })
             .collect();
 
-        info!("offered auths {:?}", offered_auths);
+        debug!("Offered auths: {:?}", offered_auths);
 
         let sasl_client = {
             use rsasl::mechanisms::oauthbearer::OAUTHBEARER;
@@ -198,7 +198,7 @@ impl ConnectionFactory {
             .expect("shared mechanisms");
 
         let selected_mechanism = sasl_session.get_mechname().as_str().to_string();
-        info!("Attempting auth with {}", selected_mechanism);
+        debug!("Attempting login with '{}'", selected_mechanism);
 
         let ret = client.authenticate(
             selected_mechanism.as_str(),
