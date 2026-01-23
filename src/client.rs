@@ -72,8 +72,11 @@ impl async_imap::Authenticator for Authenticator {
     }
 }
 
+#[cfg(feature = "insecure-raw-logging")]
 #[derive(Debug)]
 pub struct StreamFormatter {}
+
+#[cfg(feature = "insecure-raw-logging")]
 impl logged_stream::BufferFormatter for StreamFormatter {
     fn get_separator(&self) -> &str {
         &""
@@ -86,6 +89,19 @@ impl logged_stream::BufferFormatter for StreamFormatter {
         }
     }
 }
+
+type UnloggedStream = tokio_rustls::client::TlsStream<tokio::net::TcpStream>;
+
+#[cfg(not(feature = "insecure-raw-logging"))]
+type Stream = UnloggedStream;
+
+#[cfg(feature = "insecure-raw-logging")]
+type Stream = logged_stream::LoggedStream<
+    UnloggedStream,
+    StreamFormatter,
+    logged_stream::DefaultFilter,
+    logged_stream::ConsoleLogger,
+>;
 
 impl ConnectionFactory {
     pub fn new(
@@ -109,19 +125,7 @@ impl ConnectionFactory {
         }
     }
 
-    pub async fn connection(
-        &mut self,
-    ) -> Result<
-        async_imap::Session<
-            logged_stream::LoggedStream<
-                tokio_rustls::client::TlsStream<tokio::net::TcpStream>,
-                StreamFormatter,
-                logged_stream::DefaultFilter,
-                logged_stream::ConsoleLogger,
-            >,
-        >,
-        anyhow::Error,
-    > {
+    pub async fn connection(&mut self) -> Result<async_imap::Session<Stream>, anyhow::Error> {
         let raw_stream =
             tokio::net::TcpStream::connect(&(self.endpoint.host, self.endpoint.port)).await?;
 
@@ -134,14 +138,24 @@ impl ConnectionFactory {
             )
             .await?;
 
-        let logged_stream = logged_stream::LoggedStream::new(
-            tls_stream,
-            StreamFormatter {},
-            logged_stream::DefaultFilter::default(),
-            logged_stream::ConsoleLogger::new_unchecked("debug"),
-        );
+        let stream = {
+            #[cfg(feature = "insecure-raw-logging")]
+            {
+                logged_stream::LoggedStream::new(
+                    tls_stream,
+                    StreamFormatter {},
+                    logged_stream::DefaultFilter::default(),
+                    logged_stream::ConsoleLogger::new_unchecked("debug"),
+                )
+            }
 
-        let mut client = async_imap::Client::new(logged_stream);
+            #[cfg(not(feature = "insecure-raw-logging"))]
+            {
+                tls_stream
+            }
+        };
+
+        let mut client = async_imap::Client::new(stream);
         debug!("Create new imap client");
 
         let _greeting = client.read_response().await?;
