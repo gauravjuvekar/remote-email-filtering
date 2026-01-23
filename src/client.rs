@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use secrecy::SecretString;
 use tokio_rustls::rustls;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::auth;
 use crate::auth::Provider;
+
+#[derive(Debug)]
 pub struct ImapConfig {
     host: &'static str,
     port: u16,
@@ -23,6 +25,7 @@ fn imap_config(provider: auth::Provider) -> ImapConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct ConnectionFactory {
     endpoint: ImapConfig,
     user: String,
@@ -125,6 +128,7 @@ impl ConnectionFactory {
         }
     }
 
+    #[instrument(name = "create new IMAP connection", skip_all)]
     pub async fn connection(&mut self) -> Result<async_imap::Session<Stream>, anyhow::Error> {
         let raw_stream =
             tokio::net::TcpStream::connect(&(self.endpoint.host, self.endpoint.port)).await?;
@@ -156,7 +160,6 @@ impl ConnectionFactory {
         };
 
         let mut client = async_imap::Client::new(stream);
-        debug!("Create new imap client");
 
         let _greeting = client.read_response().await?;
 
@@ -198,8 +201,7 @@ impl ConnectionFactory {
             .expect("shared mechanisms");
 
         let selected_mechanism = sasl_session.get_mechname().as_str().to_string();
-        debug!("Attempting login with '{}'", selected_mechanism);
-
+        debug!("Attempting login with '{selected_mechanism}'");
         let ret = client.authenticate(
             selected_mechanism.as_str(),
             Authenticator::new(sasl_session),

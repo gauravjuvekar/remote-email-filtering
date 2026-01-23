@@ -137,6 +137,7 @@ fn get_request_fn_async() -> reqwest::Client {
         .expect("reqwest client shoudl build")
 }
 
+#[derive(Debug)]
 pub struct TokenManager {
     secrets: PersistedSecrets,
     storage: Option<std::fs::File>,

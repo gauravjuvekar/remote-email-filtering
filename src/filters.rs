@@ -101,8 +101,10 @@ fn process_folder(folder: &types::Folder, actions: &Vec<actions::Action>) -> () 
 
 pub async fn mainloop(
     filter_spec: &types::FilterSpec<'_>,
-    connection_factory: crate::client::ConnectionFactory,
+    mut connection_factory: crate::client::ConnectionFactory,
 ) -> anyhow::Result<()> {
+    let connection = connection_factory.connection().await?;
+
     loop {
         for (folder, actions) in filter_spec {
             info_span!("process_folder", folder = folder.path[0]).in_scope(|| {
