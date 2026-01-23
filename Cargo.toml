@@ -38,6 +38,7 @@ logged-stream = "0.4.1"
 tokio-rustls = "0.26.4"
 rustls = "0.23.36"
 webpki-roots = "1.0.5"
+futures-util = "0.3.31"
 
 [lib]
 name = "remote_email_filtering"

@@ -6,10 +6,7 @@ pub struct Message {
     pub id: u32,
 }
 
-#[derive(Clone)]
-pub struct Folder {
-    pub path: Vec<String>,
-}
+pub use crate::folder::Folder;
 
 pub struct Context {}
 

@@ -1,9 +1,9 @@
+use futures_util::StreamExt;
 use maybe_owned::MaybeOwned;
 use std::collections::HashSet;
 use tracing::{info, info_span};
 
 use crate::actions;
-use crate::client;
 use crate::types;
 
 pub struct DebugPrint;
@@ -103,7 +103,16 @@ pub async fn mainloop(
     filter_spec: &types::FilterSpec<'_>,
     mut connection_factory: crate::client::ConnectionFactory,
 ) -> anyhow::Result<()> {
-    let connection = connection_factory.connection().await?;
+    let mut connection = connection_factory.connection().await?;
+
+    let mut folders = connection.list(None, Some("*")).await?;
+
+    while let Some(mut folder) = folders.next().await {
+        let f: types::Folder = (&folder.unwrap()).into();
+        info!("Got folder {}", f);
+    }
+
+    return Ok(());
 
     loop {
         for (folder, actions) in filter_spec {

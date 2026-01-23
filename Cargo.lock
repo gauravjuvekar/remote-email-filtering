@@ -1412,6 +1412,7 @@ dependencies = [
  "async-imap",
  "chrono",
  "clap",
+ "futures-util",
  "http",
  "logged-stream",
  "maybe-owned",
