@@ -1,4 +1,4 @@
-# Register a new app with Google
+# Register a new app with Microsoft
 
 ## Create a new project
 
