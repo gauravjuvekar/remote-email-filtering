@@ -21,7 +21,7 @@ class Message(object):
         :param tuple[str] dir_: the mailbox directory that this email is in
         """
         self.uid = uid
-        self.envelope = envelope._asdict()
+        self.envelope = envelope._dict__
         for field in ('cc', 'bcc', 'from_', 'reply_to', 'sender', 'to'):
             if not self.envelope[field]:
                 self.envelope[field] = []
