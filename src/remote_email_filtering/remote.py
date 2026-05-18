@@ -71,6 +71,7 @@ class Remote(abc.ABC):
         Get all messages in ``dir_``
         """
         list_msg = list(self.list_messages(dir_))
+        list_msg = list_msg[:250]
         for msg_id, envelope in zip(
             list_msg, self.fetch_multiple_envelopes(list_msg)
         ):
