@@ -71,13 +71,13 @@ class Remote(abc.ABC):
         Get all messages in ``dir_``
         """
         list_msg = list(self.list_messages(dir_))
-        list_msg = list_msg[:250]
-        for msg_id, envelope in zip(
-            list_msg, self.fetch_multiple_envelopes(list_msg)
-        ):
-            yield message.Message(
-                uid=msg_id, envelope=envelope, dir_=dir_, remote=self
-            )
+        for batch in itertools.batched(list_msg, 250):
+            for msg_id, envelope in zip(
+                batch, self.fetch_multiple_envelopes(batch)
+            ):
+                yield message.Message(
+                    uid=msg_id, envelope=envelope, dir_=dir_, remote=self
+                )
 
     @abc.abstractmethod
     def move_message_id(self, msg_id: types.Uid, target_dir: types.Directory
